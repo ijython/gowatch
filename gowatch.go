@@ -71,7 +71,8 @@ func main() {
 		<-c
 		if lastCmd != nil {
 			fmt.Println("killing ", lastCmd.Process.Pid)
-			syscall.Kill(-lastCmd.Process.Pid, syscall.SIGKILL)
+			lastCmd.Process.Kill()
+			//syscall.Kill(-lastCmd.Process.Pid, syscall.SIGKILL)
 		}
 		fmt.Println("\nExit")
 		os.Exit(0)
@@ -91,7 +92,8 @@ func main() {
 			if watchFiles() {
 				if lastCmd != nil {
 					fmt.Println("killing ", lastCmd.Process.Pid)
-					syscall.Kill(-lastCmd.Process.Pid, syscall.SIGKILL)
+					lastCmd.Process.Kill()
+					//syscall.Kill(-lastCmd.Process.Pid, syscall.SIGKILL)
 				}
 				changed <- true
 			}
@@ -113,6 +115,7 @@ func main() {
 		case <-changed:
 			os.Stdout.WriteString("\x1b[3;J\x1b[H\x1b[2J")
 			fmt.Printf("[Watching \033[36m%s\033[0m] [Running \033[36m%s %s\033[0m]\n\n", strings.Join(basePaths, " "), cmd, strings.Join(cmdArgs, " "))
+			//fmt.Printf("Watching \03336m%s\0330m Running \03336m%s %s\0330m\n\n", strings.Join(basePaths, " "), cmd, strings.Join(cmdArgs, " "))
 			runCommand(cmd, cmdArgs...)
 		}
 	}
@@ -144,7 +147,8 @@ var lastCmd *exec.Cmd = nil
 
 func runCommand(command string, args ...string) {
 	cmd := exec.Command(command, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	//cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	lastCmd = cmd
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
