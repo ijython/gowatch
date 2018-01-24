@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -65,8 +64,8 @@ func main() {
 		}
 	}
 
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
 	go func() {
 		<-c
 		if lastCmd != nil {
@@ -114,8 +113,7 @@ func main() {
 		select {
 		case <-changed:
 			os.Stdout.WriteString("\x1b[3;J\x1b[H\x1b[2J")
-			fmt.Printf("[Watching \033[36m%s\033[0m] [Running \033[36m%s %s\033[0m]\n\n", strings.Join(basePaths, " "), cmd, strings.Join(cmdArgs, " "))
-			//fmt.Printf("Watching \03336m%s\0330m Running \03336m%s %s\0330m\n\n", strings.Join(basePaths, " "), cmd, strings.Join(cmdArgs, " "))
+			fmt.Printf("Watching \03336m%s\0330m Running \03336m%s %s\0330m\n\n", strings.Join(basePaths, " "), cmd, strings.Join(cmdArgs, " "))
 			runCommand(cmd, cmdArgs...)
 		}
 	}
@@ -148,24 +146,19 @@ var lastCmd *exec.Cmd = nil
 func runCommand(command string, args ...string) {
 	cmd := exec.Command(command, args...)
 	//cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	//cmd.SysProcAttr = &syscall.SysProcAttr{}
 	lastCmd = cmd
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	stderr, err := cmd.StderrPipe()
+	stdoutAndErr, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	cmd.Start()
-	reader := bufio.NewReader(io.MultiReader(stdout, stderr))
+	reader := bytes.NewBuffer(stdoutAndErr)
 	for {
-		lineBuf, _, err2 := reader.ReadLine()
-
+		//lineBuf, _, err2 := reader.ReadLine()
+		lineBuf, err2 := reader.ReadString('\n')
 		if err2 != nil || io.EOF == err2 {
 			break
 		}
